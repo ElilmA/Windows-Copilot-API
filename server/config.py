@@ -13,3 +13,8 @@ MODEL_NAME = "copilot"
 # upstream 502s, so the limiter only bites when callers try to exceed that.
 RATE_LIMIT_RPM = float(os.environ.get("RATE_LIMIT_RPM", "12"))  # 12 rpm ≈ 5s per call
 RATE_LIMIT_BURST = int(os.environ.get("RATE_LIMIT_BURST", "4"))
+
+# Copilot can reject very large single-message prompts. Keep the full text on
+# disk, but send only a bounded prompt upstream. Set to 0 to send the full text.
+COPILOT_MAX_PROMPT_CHARS = int(os.environ.get("COPILOT_MAX_PROMPT_CHARS", "6000"))
+COPILOT_CONTEXT_STORE_DIR = os.environ.get("COPILOT_CONTEXT_STORE_DIR", ".context-store")

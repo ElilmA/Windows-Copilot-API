@@ -183,9 +183,16 @@ curl http://localhost:8000/v1/chat/completions \
 | Method | Path | Description |
 | --- | --- | --- |
 | `POST` | `/v1/chat/completions` | Chat (supports `"stream": true` and an optional `"conversation_id"`) |
+| `POST` | `/v1/responses` | Minimal Responses API compatibility for Codex-style clients |
 | `GET`  | `/v1/models` | Lists the single `copilot` model |
 
 > Change the address with env vars: `HOST=0.0.0.0 PORT=8080 python app.py`, or run `uvicorn server.api:app --host 0.0.0.0 --port 8080`.
+
+Long prompts are preserved locally before the server sends anything upstream.
+The full flattened request is written to `.context-store/`, while
+`COPILOT_MAX_PROMPT_CHARS` controls the smaller prompt sent to Copilot
+(`6000` by default, `0` to send the full text). Set
+`COPILOT_CONTEXT_STORE_DIR` to choose another local save directory.
 
 👉 More: [examples/04_server_http.py](examples/04_server_http.py), [05_server_stream.py](examples/05_server_stream.py), [06_server_openai_sdk.py](examples/06_server_openai_sdk.py)
 

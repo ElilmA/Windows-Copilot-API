@@ -11,6 +11,11 @@ docs/
 
 # Local config / secrets
 config.json
+.context-store/
+.api-key
+.pem
+*.log
+*.pid
 
 # Dev files
 test.py

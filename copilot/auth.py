@@ -7,6 +7,7 @@ transparently refreshes it from the persistent browser profile when it goes stal
 
 import json
 import time
+from base64 import urlsafe_b64decode
 from pathlib import Path
 from typing import Optional
 
@@ -16,6 +17,23 @@ DEFAULT_PROFILE_DIR = f"{SESSION_DIR}/profile"
 DEFAULT_AUTH_FILE = f"{SESSION_DIR}/token.json"
 # Microsoft access tokens live ~60-90 min; refresh well before that.
 AUTH_MAX_AGE = 50 * 60
+
+
+def _looks_like_chat_token(token: Optional[str]) -> bool:
+    """Accept compact JWS/JWE tokens used by Copilot's chat WebSocket."""
+    if not isinstance(token, str) or not token:
+        return False
+    parts = token.split(".")
+    if len(parts) not in (3, 5):
+        return False
+    try:
+        header = parts[0] + "=" * (-len(parts[0]) % 4)
+        decoded = json.loads(urlsafe_b64decode(header.encode()).decode("utf-8"))
+    except (ValueError, TypeError, OSError):
+        return False
+    if not isinstance(decoded, dict) or not decoded.get("alg"):
+        return False
+    return len(parts) == 3 or bool(decoded.get("enc"))
 
 
 def load_auth(
@@ -47,7 +65,7 @@ def load_auth(
     if p.exists():
         try:
             cached = json.loads(p.read_text(encoding="utf-8"))
-            if cached.get("access_token") and (time.time() - cached.get("saved_at", 0)) < max_age:
+            if _looks_like_chat_token(cached.get("access_token")) and (time.time() - cached.get("saved_at", 0)) < max_age:
                 return cached
         except (ValueError, OSError):
             pass  # corrupt/unreadable -> refresh below

@@ -10,6 +10,11 @@ def new_id() -> str:
     return f"chatcmpl-{uuid.uuid4().hex}"
 
 
+def new_response_id() -> str:
+    """A fresh ``resp_...`` id for Responses API compatibility."""
+    return f"resp_{uuid.uuid4().hex}"
+
+
 def completion_response(text: str, model: str, conversation_id=None) -> dict:
     """A non-streaming ``chat.completion`` object.
 
@@ -34,9 +39,37 @@ def completion_response(text: str, model: str, conversation_id=None) -> dict:
     }
 
 
+def response_response(text: str, model: str, conversation_id=None) -> dict:
+    """A minimal non-streaming ``response`` object."""
+    return {
+        "id": new_response_id(),
+        "object": "response",
+        "created_at": int(time.time()),
+        "status": "completed",
+        "model": model,
+        "conversation_id": conversation_id,
+        "output": [
+            {
+                "id": f"msg_{uuid.uuid4().hex}",
+                "type": "message",
+                "status": "completed",
+                "role": "assistant",
+                "content": [{"type": "output_text", "text": text, "annotations": []}],
+            }
+        ],
+        "output_text": text,
+        "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+    }
+
+
 def sse_event(payload: dict) -> str:
     """Serialize a payload as a Server-Sent Events ``data:`` line."""
     return f"data: {json.dumps(payload)}\n\n"
+
+
+def named_sse_event(event: str, payload: dict) -> str:
+    """Serialize a named Server-Sent Event."""
+    return f"event: {event}\ndata: {json.dumps(payload)}\n\n"
 
 
 def stream_chunk(

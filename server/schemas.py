@@ -22,5 +22,14 @@ class ChatCompletionRequest(BaseModel):
     # to continue that thread; omit it to start a fresh conversation. Outside
     # OpenAI's schema, but standard clients can set it via extra_body.
     conversation_id: Optional[str] = None
+
+
+class ResponsesRequest(BaseModel):
+    input: Union[str, List[Any]]
+    model: Optional[str] = MODEL_NAME
+    stream: bool = False
+    previous_response_id: Optional[str] = None
+    conversation_id: Optional[str] = None
+    instructions: Optional[str] = None
     # Any other OpenAI fields (temperature, max_tokens, ...) are accepted and
     # ignored — Copilot's consumer protocol doesn't expose those knobs.

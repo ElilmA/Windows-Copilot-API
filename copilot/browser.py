@@ -30,6 +30,7 @@ from __future__ import annotations
 import json
 import sys
 import time
+from base64 import urlsafe_b64decode
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Optional
@@ -96,6 +97,23 @@ _FIND_TOKEN_JS = """
   return null;
 }
 """
+
+
+def _looks_like_chat_token(token: Optional[str]) -> bool:
+    """True for compact JWS/JWE chat tokens; false for opaque MSAL blobs."""
+    if not isinstance(token, str) or not token:
+        return False
+    parts = token.split(".")
+    if len(parts) not in (3, 5):
+        return False
+    try:
+        header = parts[0] + "=" * (-len(parts[0]) % 4)
+        decoded = json.loads(urlsafe_b64decode(header.encode()).decode("utf-8"))
+    except (ValueError, TypeError, OSError):
+        return False
+    if not isinstance(decoded, dict) or not decoded.get("alg"):
+        return False
+    return len(parts) == 3 or bool(decoded.get("enc"))
 
 # True once the user is signed in, *before* the chat token is minted. MSAL writes
 # an `msal.*.account.keys` index (a non-empty list of cached accounts) the moment
@@ -412,13 +430,14 @@ class BrowserCopilot:
         ``_FIND_TOKEN_JS`` (Microsoft logins). Call :meth:`acquire_chat_token`
         first to ensure one of these is populated.
         """
-        if self._captured_chat_token:
+        if _looks_like_chat_token(self._captured_chat_token):
             return self._captured_chat_token
         self._ensure_started()
         try:
-            return self._page.evaluate(_FIND_TOKEN_JS)
+            token = self._page.evaluate(_FIND_TOKEN_JS)
         except PlaywrightError:
             return None
+        return token if _looks_like_chat_token(token) else None
 
     def signed_in(self) -> bool:
         """True once a Microsoft/Google account is cached (sign-in complete)."""
@@ -535,7 +554,7 @@ class BrowserCopilot:
             return self.access_token()
 
         while time.time() < deadline:
-            if self._captured_chat_token:
+            if _looks_like_chat_token(self._captured_chat_token):
                 return self._captured_chat_token
             if self._window_closed():
                 break
